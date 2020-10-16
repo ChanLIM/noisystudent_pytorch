@@ -8,8 +8,6 @@ import torchvision
 import torchvision.transforms as transforms
 from PIL import Image
 
-from autoaugment import CIFAR10Policy
-
 from archive import autoaug_policy, autoaug_paper_cifar10, fa_reduced_cifar10
 from augmentations import *
 
@@ -112,15 +110,10 @@ class unsupervised_Dataset(data.Dataset):
 
 class CIFAR10(torchvision.datasets.CIFAR10):
 	def __init__(self, mode, transform, args):
-		train = True if mode in ['train', 'val', 'aug_exp'] else False
-		super().__init__(root='../data/CIFAR10/', train=train, download=True, transform=None)
-		
+		train = True if mode == 'train' else False
+		super().__init__(root='./data/CIFAR10', train=train, download=True, transform=None)
 		self.mode = mode
-		self.set_aug(5) # Random Application of 8 different augmentation
 		self.dataname = "CIFAR10"
-		self.err_rate = args.err_rate
-		self.err_method = args.err_method
-		self.warm_up = True
 		self.classes = np.arange(10)
 
 	def __getitem__(self, index):
@@ -131,16 +124,7 @@ class CIFAR10(torchvision.datasets.CIFAR10):
 			data0 = self.transform(Image.fromarray(data, 'RGB'))
 			self.set_aug(0)
 			data_noaug = self.transform(Image.fromarray(data, 'RGB'))
-			return data0, data_noaug, target, self.noisy_target[index], self.is_noise[index], index
-
-		if self.mode == "aug_exp":
-			self.set_aug(3)
-			data0 = self.transform(Image.fromarray(data, 'RGB'))
-			self.set_aug(1)
-			data1 = self.transform(Image.fromarray(data, 'RGB'))
-			self.set_aug(2)
-			data2 = self.transform(Image.fromarray(data, 'RGB'))
-			return data0, data1, data2, target, self.noisy_target[index], self.is_noise[index], index
+			return data0, data_noaug, target, index
 			
 		elif self.mode == "test":
 			self.set_aug(0)
@@ -148,14 +132,6 @@ class CIFAR10(torchvision.datasets.CIFAR10):
 			return data, target, index
 
 	def set_aug(self, stage):
-		'''
-		Set Augmentation Options
-		0: No augmentation
-		1: 100% crop
-		2: 100% horizontal flip
-		3: 100% crop & 50% horizontal flip (commonly used augmentation)
-		4: Augmentation policy found by AutoAugment
-		'''
 		if stage == 0:
 			# print("Using No Transformations")
 			self.transform = transforms.Compose([
@@ -186,18 +162,9 @@ class CIFAR10(torchvision.datasets.CIFAR10):
 				transforms.ToTensor(),
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
-		elif stage == 4:
-			# print("Apply CIFAR10 Augmentation Policy found by AutoAugment")
-			self.transform = transforms.Compose([
-				transforms.RandomCrop(32, padding=4),
-				transforms.RandomHorizontalFlip(), # flips with 0.5 probability
-				CIFAR10Policy(),
-				transforms.ToTensor(),
-				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-			])
 
 		elif stage == 5:
-			# for testing the effect Image Augmentation on prediction consistency
+			# AutoAugment & CutOut
 			transform_train = transforms.Compose([
 				transforms.RandomCrop(32, padding=4), # always crop
 				transforms.RandomHorizontalFlip(), # flips with 0.5 probability
@@ -213,38 +180,20 @@ class CIFAR10(torchvision.datasets.CIFAR10):
 
 class CIFAR100(torchvision.datasets.CIFAR100):
 	def __init__(self, mode, transform, args):
-		train = True if mode in ['train', 'val', 'aug_exp'] else False
-		super().__init__(root='./data', train=train, download=True, transform=transform)
+		train = True if mode =='train' else False
+		super().__init__(root='./data/CIFAR100', train=train, download=True, transform=transform)
 		self.mode = mode
 		self.dataname = "CIFAR100"
-		self.err_rate = args.err_rate
-		self.err_method = args.err_method
-		self.warm_up = True
 		self.classes = np.arange(100)
-
 
 	def __getitem__(self, index):
 		data, target = self.data[index], self.targets[index]
-
 		if self.mode == "train":
 			self.set_aug(5)
 			data0 = self.transform(Image.fromarray(data, 'RGB'))
 			self.set_aug(0)
 			data_noaug = self.transform(Image.fromarray(data, 'RGB'))
-			return data0, data_noaug, target, self.noisy_target[index], self.is_noise[index], index
-
-		if self.mode == "aug_exp":
-			# 3 : crop & flip
-			# 4 : crop & flip & autoaugment
-			self.set_aug(3)
-			data0 = self.transform(Image.fromarray(data, 'RGB'))
-			self.set_aug(1)
-			data1 = self.transform(Image.fromarray(data, 'RGB'))
-			self.set_aug(2)
-			data2 = self.transform(Image.fromarray(data, 'RGB'))
-
-			return data0, data1, data2, target, self.noisy_target[index], self.is_noise[index], index
-			#  data3, data4, data5, data6, data7, data8,\
+			return data0, data_noaug, target, index
 				
 		elif self.mode == "test":
 			self.set_aug(0)
@@ -290,16 +239,6 @@ class CIFAR100(torchvision.datasets.CIFAR100):
 				transforms.ToTensor(),
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
-		elif stage == 4:
-			# print("Apply CIFAR10 Augmentation Policy found by AutoAugment")
-			self.transform = transforms.Compose([
-				transforms.RandomCrop(32, padding=4),
-				transforms.RandomHorizontalFlip(), # flips with 0.5 probability
-				CIFAR10Policy(),
-				transforms.ToTensor(),
-				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-			])
-
 		elif stage == 5:
 			transform_train = transforms.Compose([
 				transforms.RandomCrop(32, padding=4),
