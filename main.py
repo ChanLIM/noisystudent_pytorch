@@ -336,12 +336,12 @@ if __name__ == "__main__":
             # teacher model helps student model 
             # by providing 'pseudo label on unlabeled data' to the student model
             train_log = train_student(epoch, model_student, model_teacher, labeled_loader, unlabeled_loader)
+            exp_log = train_log.copy()
+
             if epoch % 10 == 0 and epoch != 0:
                 test_log = test(epoch, model_student, testloader, args.epochs)
+                exp_log.update(test_log)
             scheduler_student.step()
-
-            exp_log = train_log.copy()
-            exp_log.update(test_log)
             exp_logs.append(exp_log)
             save_json_file_withname(outdir, args.name, exp_logs)
 
