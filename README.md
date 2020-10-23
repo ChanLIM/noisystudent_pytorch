@@ -6,7 +6,7 @@ This is implementation of Noisy Student [[paper]](https://arxiv.org/abs/1911.042
 
 ## Noising Student
 ### Input Noise
-- RandAugment : (AutoAugment) O? X?
+- RandAugment : Substituted to AutoAugment
 ### Model Noise
 - Dropout : O
 - Stochastic Depth : X
@@ -18,5 +18,5 @@ This is implementation of Noisy Student [[paper]](https://arxiv.org/abs/1911.042
 - increase test time crop size & fine tune : X
 
 ## Other Techniques
-- filter images that the teacher has low confidences on : X
+- filter images that the teacher has low confidences on : O
 - balance the number of unlabeled images for each class : X
