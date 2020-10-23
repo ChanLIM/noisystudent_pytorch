@@ -20,3 +20,10 @@ This is implementation of Noisy Student [[paper]](https://arxiv.org/abs/1911.042
 ## Other Techniques
 - filter images that the teacher has low confidences on : O
 - balance the number of unlabeled images for each class : X
+
+
+To run the code,
+
+            python main.py \
+                --lr=0.001 \
+                --dataset='CIFAR10'
