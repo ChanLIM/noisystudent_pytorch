@@ -48,27 +48,15 @@ outdir.mkdir(exist_ok=True, parents=True)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
 
-transform_train = transforms.Compose([
-    transforms.RandomCrop(32, padding=4),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-])
-
-transform_test = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-])
-
 if args.dataset == 'CIFAR10':
-    trainset = CIFAR10(mode='train', transform=transform_train, args=args)
-    unlabeledset = CIFAR100(mode='train', transform=transform_train, args=args)
-    testset = CIFAR10(mode='test', transform=transform_test, args=args)
+    trainset = CIFAR10(mode='train', args=args)
+    unlabeledset = CIFAR100(mode='unlabeled', args=args)
+    testset = CIFAR10(mode='test', args=args)
 
 elif args.dataset == 'CIFAR100':
-    trainset = CIFAR100(mode='train', transform=transform_train, args=args)
-    unlabeledset = CIFAR10(mode='train', transform=transform_train, args=args)
-    testset = CIFAR100(mode='test', transform=transform_test, args=args)
+    trainset = CIFAR100(mode='train', args=args)
+    unlabeledset = CIFAR10(mode='unlabeled', args=args)
+    testset = CIFAR100(mode='test', args=args)
 
 labeled_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=2)
 unlabeled_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=2)
@@ -135,7 +123,7 @@ def warmup(epoch, model, trainloader):
 
     metrics = Accumulator()
 
-    for batch_idx, (inputs, input_noaug, target, dataset_index) in enumerate(trainloader):
+    for batch_idx, (inputs, inputs_noaug, target, dataset_index) in enumerate(trainloader):
         inputs, target = inputs.to(device), target.to(device)
         optimizer_teacher.zero_grad()
 
@@ -200,23 +188,29 @@ def train_student(epoch, model_student, model_teacher, labeled_loader, unlabeled
         inputs_noaug_u = inputs_noaug_u.to(device)
 
         with torch.no_grad():
-            # prediction of unlabeled data on teacher model (no augmentation)
+            # prediction of unlabeled data on teacher model (on unaugmented input)
             pseudo_logit = model_teacher(inputs_noaug_u)
             pseudo_label = F.softmax(pseudo_logit, dim=1).detach()
-        
+
+            # filter images that the teacher has low confidences on
+            max_probs, targets_u = torch.max(pseudo_label, dim=-1)
+            mask = max_probs.ge(0.4).float()
+
         outputs0 = model_student(inputs_u)
         outputs0 = F.log_softmax(outputs0, dim=1)
 
+        # use soft_label / use targets_u for hard label & change the loss fn to CE.
         loss_0 = F.kl_div(outputs0, pseudo_label, reduction='none')
-        loss_0 = torch.sum(loss_0, dim=1)
+        loss_0 = torch.sum(loss_0, dim=1) * mask
 
         inputs, target = inputs.to(device), target.to(device)
         optimizer_student.zero_grad()
 
         outputs1 = model_student(inputs)
-        loss_1 = criterion(outputs1, target)
+        loss_1 = criterion(outputs1, target) # reduction : mean
         
-        loss = torch.mean(loss_0) + loss_1
+        lambda_u = 1
+        loss = torch.mean(loss_0) * lambda_u + loss_1
         
         loss.backward()
         optimizer_student.step()
@@ -315,7 +309,6 @@ if __name__ == "__main__":
     # torch.save(model_teacher.state_dict(), reset_model)
     # model_student.load_state_dict(torch.load(reset_model))
 
-    print("initial teacher train / train with only labeled data")
     for epoch in range(args.warm_up):
         train_log = warmup(epoch, model_teacher, labeled_loader)
         exp_log = train_log.copy()
@@ -360,4 +353,3 @@ if __name__ == "__main__":
 
             optimizer_student = optim.SGD(model_student.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4, nesterov=True, dampening=0)
             scheduler_student = torch.optim.lr_scheduler.StepLR(optimizer_student, step_size=5, gamma=0.97)
-

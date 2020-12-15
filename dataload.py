@@ -109,8 +109,8 @@ class unsupervised_Dataset(data.Dataset):
 
 
 class CIFAR10(torchvision.datasets.CIFAR10):
-	def __init__(self, mode, transform, args):
-		train = True if mode == 'train' else False
+	def __init__(self, mode, args):
+		train = True if mode in ['train', 'unlabeled'] else False
 		super().__init__(root='./data/CIFAR10', train=train, download=True, transform=None)
 		self.mode = mode
 		self.dataname = "CIFAR10"
@@ -125,28 +125,28 @@ class CIFAR10(torchvision.datasets.CIFAR10):
 			self.set_aug(0)
 			data_noaug = self.transform(Image.fromarray(data, 'RGB'))
 			return data0, data_noaug, target, index
-			
+
 		elif self.mode == "test":
 			self.set_aug(0)
 			data = self.transform(Image.fromarray(data, 'RGB'))
 			return data, target, index
 
-	def set_aug(self, stage):
-		if stage == 0:
+	def set_aug(self, method):
+		if method == 0:
 			# print("Using No Transformations")
 			self.transform = transforms.Compose([
 				transforms.ToTensor(),
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
 
-		elif stage == 1:
+		elif method == 1:
 			# print("Using 100% Crop")
 			self.transform = transforms.Compose([
 				transforms.RandomCrop(32, padding=4),
 				transforms.ToTensor(),
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
-		elif stage == 2:
+		elif method == 2:
 			# print("Using 100% HorizontalFlips")
 			self.transform = transforms.Compose([
 				# flips with given probability. if p=1, always flip.
@@ -154,7 +154,7 @@ class CIFAR10(torchvision.datasets.CIFAR10):
 				transforms.ToTensor(),
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
-		elif stage == 3: # original data augmentation
+		elif method == 3: # most widely used data augmentation for CIFAR dataset
 			# print("Using Random Crop & Random Horizontal Flip")
 			self.transform = transforms.Compose([
 				transforms.RandomCrop(32, padding=4), # always crop
@@ -163,7 +163,7 @@ class CIFAR10(torchvision.datasets.CIFAR10):
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
 
-		elif stage == 5:
+		elif method == 5:
 			# AutoAugment & CutOut
 			transform_train = transforms.Compose([
 				transforms.RandomCrop(32, padding=4), # always crop
@@ -179,9 +179,9 @@ class CIFAR10(torchvision.datasets.CIFAR10):
 
 
 class CIFAR100(torchvision.datasets.CIFAR100):
-	def __init__(self, mode, transform, args):
+	def __init__(self, mode, args):
 		train = True if mode =='train' else False
-		super().__init__(root='./data/CIFAR100', train=train, download=True, transform=transform)
+		super().__init__(root='./data/CIFAR100', train=train, download=True, transform=None)
 		self.mode = mode
 		self.dataname = "CIFAR100"
 		self.classes = np.arange(100)
@@ -200,7 +200,7 @@ class CIFAR100(torchvision.datasets.CIFAR100):
 			data = self.transform(Image.fromarray(data, 'RGB'))
 			return data, target, index
 
-	def set_aug(self, stage):
+	def set_aug(self, method):
 		'''
 		Set Augmentation Options
 		0: No augmentation
@@ -209,21 +209,21 @@ class CIFAR100(torchvision.datasets.CIFAR100):
 		3: 100% crop & 50% horizontal flip (commonly used augmentation)
 		4: Augmentation policy found by AutoAugment
 		'''
-		if stage == 0:
+		if method == 0:
 			# print("Using No Transformations")
 			self.transform = transforms.Compose([
 				transforms.ToTensor(),
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
 
-		elif stage == 1:
+		elif method == 1:
 			# print("Using 100% Crop")
 			self.transform = transforms.Compose([
 				transforms.RandomCrop(32, padding=4),
 				transforms.ToTensor(),
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
-		elif stage == 2:
+		elif method == 2:
 			# print("Using 100% HorizontalFlips")
 			self.transform = transforms.Compose([
 				# flips with given probability. if p=1, always flip.
@@ -231,7 +231,7 @@ class CIFAR100(torchvision.datasets.CIFAR100):
 				transforms.ToTensor(),
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
-		elif stage == 3: # original data augmentation
+		elif method == 3: # most widely used data augmentation for CIFAR dataset
 			# print("Using Random Crop & Random Horizontal Flip")
 			self.transform = transforms.Compose([
 				transforms.RandomCrop(32, padding=4), # always crop
@@ -239,7 +239,7 @@ class CIFAR100(torchvision.datasets.CIFAR100):
 				transforms.ToTensor(),
 				transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 			])
-		elif stage == 5:
+		elif method == 5:
 			transform_train = transforms.Compose([
 				transforms.RandomCrop(32, padding=4),
 				transforms.RandomHorizontalFlip(),
