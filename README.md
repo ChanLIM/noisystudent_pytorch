@@ -12,7 +12,7 @@ The code will be using CIFAR100 instead of ImageNet2012, on top of CIFAR10 inste
 
 ## Noising Student
 ### Input Noise
-- RandAugment : (AutoAugment) O? X?
+- RandAugment : Substituted to AutoAugment
 ### Model Noise
 - Dropout : O
 - Stochastic Depth : X
@@ -26,3 +26,10 @@ The code will be using CIFAR100 instead of ImageNet2012, on top of CIFAR10 inste
 ## Other Techniques
 - filter images that the teacher has low confidences on : O
 - balance the number of unlabeled images for each class : X
+
+
+To run the code,
+
+            python main.py \
+                --lr=0.001 \
+                --dataset='CIFAR10'
